@@ -1,80 +1,84 @@
-function checkWebsiteSecurity() {
-  const url = document.getElementById("url").value;
-  const resultDiv = document.getElementById("result");
-  resultDiv.innerHTML = "";  // 清空先前的結果
-  
-  if (!url) {
-    resultDiv.innerHTML = "<p>請輸入網站 URL</p>";
-    return;
-  }
+// 黑名單網站範例
+const blackList = [
+  "examplemalicious.com",
+  "malwaredomain.com",
+  "phishingdomain.org",
+  "discord.com" // 模擬可疑網站
+];
 
-  // 檢查 HTTPS
-  if (url.startsWith("https://")) {
-    resultDiv.innerHTML += "<p>網站使用 HTTPS 加密，安全！</p>";
-  } else {
-    resultDiv.innerHTML += "<p>警告：網站未使用 HTTPS，加密連接無效！</p>";
-  }
+// 儲存已檢查過的網站
+const visitedWebsites = {};
 
-  // 檢查 SSL 證書
-  checkSSL(url);
-
-  // 檢查安全標頭
-  checkSecurityHeaders(url);
+// 檢查網站是否在黑名單中
+function isInBlackList(url) {
+  const urlDomain = new URL(url).hostname;
+  return blackList.some(domain => urlDomain.includes(domain));
 }
 
-function checkSSL(url) {
-  fetch(url)
-    .then(response => {
-      if (response.ok) {
-        console.log("SSL 證書有效！");
-      } else {
-        console.log("SSL 證書無效！");
-      }
-    })
-    .catch(error => {
-      console.log("無法連接到網站，可能存在 SSL 問題：", error);
-    });
+// 檢查是否使用 HTTPS
+function isHttps(url) {
+  return url.startsWith("https://");
 }
 
-function checkSecurityHeaders(url) {
-  fetch(url, { method: "HEAD" })
-    .then(response => {
-      const headers = response.headers;
-      
-      if (headers.has("Strict-Transport-Security")) {
-        console.log("網站使用 Strict-Transport-Security 標頭，增強安全！");
-      } else {
-        console.log("網站缺少 Strict-Transport-Security 標頭！");
-      }
-      
-      if (headers.has("Content-Security-Policy")) {
-        console.log("網站使用 Content-Security-Policy 標頭，防範 XSS 攻擊！");
-      } else {
-        console.log("網站缺少 Content-Security-Policy 標頭！");
-      }
-    })
-    .catch(error => {
-      console.log("無法獲取網站標頭，可能存在連接問題：", error);
-    });
-
-    function checkSSL(url) {
-      const apiUrl = `https://api.ssllabs.com/api/v3/analyze?host=${url}`;
-    
-      fetch(apiUrl)
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === "READY") {
-            const grade = data.grade;
-            console.log(`SSL 證書等級：${grade}`);
-            document.getElementById("result").innerHTML += `<p>SSL 證書等級：${grade}</p>`;
-          } else {
-            document.getElementById("result").innerHTML += "<p>無法獲取 SSL 證書信息，請稍後再試。</p>";
-          }
-        })
-        .catch(error => {
-          console.error("錯誤:", error);
-          document.getElementById("result").innerHTML += "<p>無法檢查 SSL 證書，請檢查網站是否存在。</p>";
-        });
+// 檢查網站標頭是否包含安全標頭
+async function hasSecureHeaders(url) {
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    const headers = response.headers;
+    if (headers.has("Strict-Transport-Security") && headers.has("Content-Security-Policy")) {
+      return true;
+    } else {
+      return false;
     }
-    
+  } catch (error) {
+    console.error("標頭檢查錯誤:", error);
+    return false;
+  }
 }
+
+// 檢查網站格式是否正確
+function isValidUrlFormat(url) {
+  try {
+    new URL(url); // 嘗試解析 URL
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+// 核心檢查函式
+export async function checkWebsiteSecurity(url) {
+  // 檢查 URL 是否已經檢查過
+  if (visitedWebsites[url]) {
+    return visitedWebsites[url]; // 返回先前檢查結果
+  }
+
+  // 檢查 URL 格式是否有效
+  if (!isValidUrlFormat(url)) {
+    return "網站 URL 格式無效！";
+  }
+
+  // 1. 檢查是否在黑名單中
+  if (isInBlackList(url)) {
+    visitedWebsites[url] = "這個網站是可疑的，屬於黑名單！";
+    return visitedWebsites[url];
+  }
+
+  // 2. 檢查是否使用 HTTPS
+  if (!isHttps(url)) {
+    visitedWebsites[url] = "這個網站沒有使用 HTTPS，連接不安全！";
+    return visitedWebsites[url];
+  }
+
+  // 3. 檢查網站是否有安全標頭
+  const secureHeaders = await hasSecureHeaders(url);
+  if (!secureHeaders) {
+    visitedWebsites[url] = "這個網站缺少安全標頭，可能不安全！";
+    return visitedWebsites[url];
+  }
+
+  // 如果網站通過所有檢查，顯示安全
+  visitedWebsites[url] = "這個網站是安全的！";
+  return visitedWebsites[url];
+}
+
