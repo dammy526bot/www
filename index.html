@@ -103,14 +103,14 @@
 
       // 2. 檢查是否使用 HTTPS
       if (!isHttps(url)) {
-        resultDiv.innerHTML = "這個網站沒有使用 HTTPS，連接不安全！";
+        resultDiv.innerHTML = "這個網站沒有使用 HTTPS，連接不安全！，不要用不安全";
         return;
       }
 
       // 3. 檢查網站是否有安全標頭
       const secureHeaders = await hasSecureHeaders(url);
       if (!secureHeaders) {
-        resultDiv.innerHTML = "這個網站缺少安全標頭，可能不安全！";
+        resultDiv.innerHTML = "這個網站缺少安全標頭，可能不安全，請小心使用！";
         return;
       }
 
