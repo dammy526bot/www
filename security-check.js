@@ -56,4 +56,25 @@ function checkSecurityHeaders(url) {
     .catch(error => {
       console.log("無法獲取網站標頭，可能存在連接問題：", error);
     });
+
+    function checkSSL(url) {
+      const apiUrl = `https://api.ssllabs.com/api/v3/analyze?host=${url}`;
+    
+      fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === "READY") {
+            const grade = data.grade;
+            console.log(`SSL 證書等級：${grade}`);
+            document.getElementById("result").innerHTML += `<p>SSL 證書等級：${grade}</p>`;
+          } else {
+            document.getElementById("result").innerHTML += "<p>無法獲取 SSL 證書信息，請稍後再試。</p>";
+          }
+        })
+        .catch(error => {
+          console.error("錯誤:", error);
+          document.getElementById("result").innerHTML += "<p>無法檢查 SSL 證書，請檢查網站是否存在。</p>";
+        });
+    }
+    
 }

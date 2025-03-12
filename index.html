@@ -1,26 +1,129 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>網站安全檢查工具</title>
-  <link rel="stylesheet" href="style.css">  <!-- 引入外部CSS檔案 -->
+  <title>網站安全檢查</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 20px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 5px 0;
+      width: 100%;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>網站安全檢查工具</h1>
-    <p>請輸入網站 URL 並檢查其安全性</p>
-    <div class="input-group">
-      <input type="text" id="url" placeholder="輸入網站 URL" class="input-field">
-      <button onclick="checkWebsiteSecurity()" class="check-btn">檢查安全性</button>
-    </div>
-    <div id="result" class="result"></div>
-  </div>
 
-  <!-- 引入 JavaScript 檔案 -->
-  <script src="security-check.js"></script>
+  <h1>網站安全檢查</h1>
+  <p>請輸入網站 URL：</p>
+  <input type="text" id="url" placeholder="https://example.com">
+  <button onclick="checkWebsite()">檢查網站</button>
+
+  <div id="result"></div>
+
+  <script>
+    // 黑名單網站範例
+    const blackList = [
+      "examplemalicious.com",
+      "malwaredomain.com",
+      "phishingdomain.org",
+      "discord.com" // 模擬可疑網站
+    ];
+
+    // 檢查網站是否在黑名單中
+    function isInBlackList(url) {
+      const urlDomain = new URL(url).hostname;
+      return blackList.some(domain => urlDomain.includes(domain));
+    }
+
+    // 檢查是否使用 HTTPS
+    function isHttps(url) {
+      return url.startsWith("https://");
+    }
+
+    // 檢查網站標頭是否包含安全標頭
+    async function hasSecureHeaders(url) {
+      try {
+        const response = await fetch(url, { method: 'HEAD' });
+        const headers = response.headers;
+        if (headers.has("Strict-Transport-Security") && headers.has("Content-Security-Policy")) {
+          return true;
+        } else {
+          return false;
+        }
+      } catch (error) {
+        console.error("標頭檢查錯誤:", error);
+        return false;
+      }
+    }
+
+    // 檢查網站格式是否正確
+    function isValidUrlFormat(url) {
+      try {
+        new URL(url); // 嘗試解析 URL
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    async function checkWebsite() {
+      const url = document.getElementById("url").value;
+      const resultDiv = document.getElementById("result");
+
+      resultDiv.innerHTML = "";  // 清空結果區域
+
+      // 檢查是否有輸入 URL
+      if (!url) {
+        resultDiv.innerHTML = "請輸入有效的網站 URL！";
+        return;
+      }
+
+      // 檢查 URL 格式是否有效
+      if (!isValidUrlFormat(url)) {
+        resultDiv.innerHTML = "網站 URL 格式無效！";
+        return;
+      }
+
+      // 1. 檢查是否在黑名單中
+      if (isInBlackList(url)) {
+        resultDiv.innerHTML = "這個網站是可疑的，屬於黑名單！";
+        return;
+      }
+
+      // 2. 檢查是否使用 HTTPS
+      if (!isHttps(url)) {
+        resultDiv.innerHTML = "這個網站沒有使用 HTTPS，連接不安全！";
+        return;
+      }
+
+      // 3. 檢查網站是否有安全標頭
+      const secureHeaders = await hasSecureHeaders(url);
+      if (!secureHeaders) {
+        resultDiv.innerHTML = "這個網站缺少安全標頭，可能不安全！";
+        return;
+      }
+
+      // 如果網站通過所有檢查，顯示安全
+      resultDiv.innerHTML = "這個網站是安全的！";
+    }
+  </script>
+
 </body>
 </html>
+
+
+
 
 
 
