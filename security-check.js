@@ -1,84 +1,93 @@
-// 黑名單網站範例
+// 黑名單網站列表
 const blackList = [
   "examplemalicious.com",
-  "malwaredomain.com",
-  "phishingdomain.org",
-  "discord.com" // 模擬可疑網站
+  "phishingdomain.com",
+  "suspicioussite.org"
 ];
-
-// 儲存已檢查過的網站
-const visitedWebsites = {};
 
 // 檢查網站是否在黑名單中
 function isInBlackList(url) {
-  const urlDomain = new URL(url).hostname;
+  const urlDomain = new URL(url).hostname; // 解析網址的主機名
   return blackList.some(domain => urlDomain.includes(domain));
 }
 
-// 檢查是否使用 HTTPS
+// 檢查是否使用 HTTPS 協議
 function isHttps(url) {
   return url.startsWith("https://");
 }
 
-// 檢查網站標頭是否包含安全標頭
-async function hasSecureHeaders(url) {
-  try {
-    const response = await fetch(url, { method: 'HEAD' });
-    const headers = response.headers;
-    if (headers.has("Strict-Transport-Security") && headers.has("Content-Security-Policy")) {
-      return true;
-    } else {
-      return false;
-    }
-  } catch (error) {
-    console.error("標頭檢查錯誤:", error);
-    return false;
-  }
-}
+// 通過 Google Safe Browsing API 檢查網站是否安全
+async function checkGoogleSafeBrowsing(url) {
+  const apiKey = 'AIzaSyBI9HvTDeHEjlh-XY12-_S23Lvzd7d0d6w';  // 在這裡填入您的 Google API 密鑰
+  const endpoint = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${apiKey}`;
 
-// 檢查網站格式是否正確
-function isValidUrlFormat(url) {
+  const requestData = {
+      "client": {
+          "clientId": "your_client_id",  // 可以自訂
+          "clientVersion": "1.0"
+      },
+      "threatInfo": {
+          "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING"],
+          "platformTypes": ["ANY_PLATFORM"],
+          "threatEntryTypes": ["URL"],
+          "threatEntries": [
+              { "url": url }
+          ]
+      }
+  };
+
   try {
-    new URL(url); // 嘗試解析 URL
-    return true;
+      const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestData)
+      });
+      const data = await response.json();
+
+      // 如果結果為空，表示網站不被標註為不安全
+      return data.matches && data.matches.length > 0;
   } catch (error) {
-    return false;
+      console.error("Error checking Google Safe Browsing API:", error);
+      return false;
   }
 }
 
 // 核心檢查函式
-export async function checkWebsiteSecurity(url) {
-  // 檢查 URL 是否已經檢查過
-  if (visitedWebsites[url]) {
-    return visitedWebsites[url]; // 返回先前檢查結果
+async function checkWebsiteSecurity() {
+  const url = document.getElementById("urlInput").value; // 獲取使用者輸入的網址
+  const resultDiv = document.getElementById("result"); // 顯示結果的區域
+  
+  // 檢查是否輸入有效網址
+  if (!url) {
+      resultDiv.textContent = "請輸入一個有效的網站網址!";
+      return;
   }
 
-  // 檢查 URL 格式是否有效
-  if (!isValidUrlFormat(url)) {
-    return "網站 URL 格式無效！";
-  }
-
-  // 1. 檢查是否在黑名單中
+  // 檢查網站是否在黑名單中
   if (isInBlackList(url)) {
-    visitedWebsites[url] = "這個網站是可疑的，屬於黑名單！";
-    return visitedWebsites[url];
+      resultDiv.textContent = "警告！這個網站在黑名單中，請小心！";
+      return;
   }
 
-  // 2. 檢查是否使用 HTTPS
+  // 檢查網站是否使用 HTTPS
   if (!isHttps(url)) {
-    visitedWebsites[url] = "這個網站沒有使用 HTTPS，連接不安全！";
-    return visitedWebsites[url];
+      resultDiv.textContent = "警告！這個網站沒有使用 HTTPS，請注意網站安全！";
+      return;
   }
 
-  // 3. 檢查網站是否有安全標頭
-  const secureHeaders = await hasSecureHeaders(url);
-  if (!secureHeaders) {
-    visitedWebsites[url] = "這個網站缺少安全標頭，可能不安全！";
-    return visitedWebsites[url];
+  // 使用 Google Safe Browsing API 檢查網站
+  const isUnsafe = await checkGoogleSafeBrowsing(url);
+
+  if (isUnsafe) {
+      resultDiv.textContent = "警告！這個網站被 Google 標註為不安全，請小心！";
+      return;
   }
 
   // 如果網站通過所有檢查，顯示安全
-  visitedWebsites[url] = "這個網站是安全的！";
-  return visitedWebsites[url];
+  resultDiv.textContent = "這個網站是安全的！";
 }
 
+// 監聽按鈕點擊事件
+document.getElementById("checkButton").addEventListener("click", checkWebsiteSecurity);
